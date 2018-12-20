@@ -32,9 +32,9 @@ def get_target_values(payoff, history):
     return np.asarray(target_values)
 
 if __name__ == '__main__':
-    save_loss_each = 1000
-    save_model_each = 100000
-    max_iter = 1000000000
+    save_loss_each = 100
+    save_model_each = 10000
+    max_iter = 100000000
     player = smart_agent('Jared')
     game = liars_dice_game()
     game.start_game()
