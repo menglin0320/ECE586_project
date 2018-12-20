@@ -22,7 +22,7 @@ def run_game(players, game):
         players.see_dice(game.peek(i))
         last_bid = game.get_last_bid(i)
         players.see_bid(last_bid)
-        action_probs, action, mask = players.act()
+        action_probs, action, mask = players.act(players.bid, players.dice)
         pay_off = game.take_action(i, action)
         # print(action_probs)
         # print (pay_off, action)

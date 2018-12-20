@@ -36,10 +36,14 @@ def action2onehot(action):
 def value_action2onehot(action):
     max_dices = 10
     max_faces = 6
-    action_size = max_dices * max_faces + 2
+    action_size = max_dices * max_faces + 3
     one_hot = np.zeros(action_size)
 
     if action == 'liar':
+        one_hot[-3] = 1
+        return one_hot
+
+    if action == 'checked':
         one_hot[-2] = 1
         return one_hot
 
@@ -114,3 +118,9 @@ def int2action(probs):
         return 'liar'
     else:
         return [max_ind//6 + 1, max_ind%6 + 1]
+
+def before_liar2int(before_liar):
+    if before_liar[0] == 0 and before_liar[1] == 0:
+        return 62
+    else:
+        return 6*(before_liar[0] - 1) + before_liar[1] - 1

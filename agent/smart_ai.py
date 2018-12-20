@@ -11,7 +11,7 @@ class smart_agent(object):
         self.dice = []
         self.bid = []
         self.all_actions = get_all_actions()
-        self.initial_lr = 0.000002
+        self.initial_lr = 0.0002
         self.train_iter = 0
         self.build_model()
         self.setup()
@@ -31,6 +31,7 @@ class smart_agent(object):
         else:
             self.sess.run(tf.global_variables_initializer())
             print('model initialized')
+
     def initialize(self):
         init_op = tf.global_variables_initializer()
         self.sess.run(init_op)
@@ -65,10 +66,12 @@ class smart_agent(object):
         self.valid_action_mask = tf.placeholder(tf.float32, [None, 61], name='valid_action_mask')
         exp_action_logits = tf.math.exp(logits)
         exp_valid_action_logits = tf.multiply(exp_action_logits, self.valid_action_mask)
-        self.action_probs = exp_valid_action_logits / tf.expand_dims(tf.reduce_sum(exp_valid_action_logits, axis=-1),1)
+        self.action_probs = exp_valid_action_logits / tf.expand_dims(tf.reduce_sum(exp_valid_action_logits, axis=-1), 1)
 
-        self.Value_target = tf.placeholder(tf.float32, [None], name='Value_target')
+        self.Value_target = tf.placeholder(tf.float32, [None, 1], name='Value_target')
         self.Value_loss = 1 / 2 * tf.reduce_mean(tf.square(self.Value - self.Value_target))
+
+        self.entry_diffs = tf.square(self.Value - self.Value_target)
         Value_counter_dis = tf.Variable(trainable=False, initial_value=0, dtype=tf.int32)
         self.Value_lr = tf.train.exponential_decay(self.initial_lr, Value_counter_dis, 300000, 0.96, staircase=True)
         self.Value_opt = layers.optimize_loss(loss=self.Value_loss, learning_rate=self.Value_lr,
@@ -83,17 +86,31 @@ class smart_agent(object):
                                                optimizer=tf.train.AdamOptimizer,
                                                clip_gradients=100., global_step=Policy_counter_dis)
 
-    def act(self):
-        whole_state_in = get_state(self.bid, self.dice)
+    def act(self, bid, dice):
+        whole_state_in = get_state(bid, dice)
         valid_action_mask = self.get_action_mask()
         [action_probs] = self.sess.run(self.action_probs, feed_dict={self.policy_state_holder: whole_state_in, \
                                                                      self.valid_action_mask: valid_action_mask})
         # print(action_probs)
         policy_action = np.argmax(action_probs)
-        epsilan = 0.05
+        epsilan = 0.3
         valid_actions = get_valid_actions(self.all_actions, self.bid)
         action = epsilan_greedy(valid_actions, policy_action, self.train_iter, epsilan)
         return action_probs, action, valid_action_mask
+
+    def get_next_value(self, bid, player_observations, cur_player):
+        # let the opponent move
+        opponent = 1 - cur_player
+        _, action, _ = self.act(bid, player_observations[opponent])
+
+        if action == 'liar':
+            value_state_bid = 'checked'
+        else:
+            value_state_bid = action
+        value_state = get_value_state(value_state_bid, player_observations[cur_player])
+
+        [V] = self.sess.run(self.Value, feed_dict={self.value_state_holder: value_state})
+        return V
 
     def get_next_state_values(self, history, player_observations):
         # TODO calc Value function for first state and reuse them
@@ -102,12 +119,19 @@ class smart_agent(object):
         cur_player = 1
         for node in history:
             valid_actions = np.asarray(get_valid_actions(self.all_actions, node))
+            # valid_actions = valid_actions.tolist()
+            # valid_actions.append('checked')
+            valid_actions = np.asarray(valid_actions)
             nextnode_values = []
             cur_player = 1 - cur_player
             for action in valid_actions:
-                whole_state_in = get_value_state(action, player_observations[cur_player])
-                [V] = self.sess.run(self.Value, feed_dict={self.value_state_holder: whole_state_in})
-                nextnode_values.append(V[0])
+                if action == 'liar':
+                    value_state = get_value_state('liar', player_observations[cur_player])
+                    [V] = self.sess.run(self.Value, feed_dict={self.value_state_holder: value_state})
+                    nextnode_values.append(V[0])
+                else:
+                    V = self.get_next_value(action, player_observations, cur_player)
+                    nextnode_values.append(V[0])
             value_for_policy_list.append(nextnode_values)
         return value_for_policy_list
 
@@ -120,6 +144,9 @@ class smart_agent(object):
         return policy_loss
 
     def train_Value_net(self, states, Value_target):
-        _, Value_loss = self.sess.run([self.Value_opt, self.Value_loss], feed_dict={self.value_state_holder: states,
+        states = np.asarray(states)
+        Value_target = np.asarray(Value_target)
+        Value_target = np.expand_dims(Value_target, 0).transpose()
+        _, Value_loss, Values, entry_diffs = self.sess.run([self.Value_opt, self.Value_loss, self.Value, self.entry_diffs], feed_dict={self.value_state_holder: states,
                                                                                     self.Value_target: Value_target})
-        return Value_loss
+        return Value_loss,Values, entry_diffs

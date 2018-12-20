@@ -22,7 +22,7 @@ def Policy_network():
     return state_holder, logits
 
 def Value_network():
-    state_holder = tf.placeholder(tf.float32, (None, 92))
+    state_holder = tf.placeholder(tf.float32, (None, 93))
     first_hidden = layers.fully_connected(state_holder,
                            num_outputs=256,
                            activation_fn=tf.nn.relu,
@@ -39,7 +39,6 @@ def Value_network():
                                           num_outputs=1,
                                           activation_fn=tf.nn.tanh,
                                           scope='2value')
-
     return state_holder, Value
 
 def define_networks():
