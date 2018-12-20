@@ -11,7 +11,7 @@ class smart_agent(object):
         self.dice = []
         self.bid = []
         self.all_actions = get_all_actions()
-        self.initial_lr = 0.002
+        self.initial_lr = 0.000002
         self.train_iter = 0
         self.build_model()
         self.setup()

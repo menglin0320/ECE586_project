@@ -33,7 +33,7 @@ def get_target_values(payoff, history):
 
 if __name__ == '__main__':
     save_loss_each = 100
-    save_model_each = 10000
+    save_model_each = 1000
     max_iter = 100000000
     player = smart_agent('Jared')
     game = liars_dice_game()
@@ -58,4 +58,4 @@ if __name__ == '__main__':
             value_losses.append(value_loss/save_loss_each)
             print('policy_loss is: {}, value_loss is {}'.format(policy_loss, value_loss))
         if not (i+1)% save_model_each:
-            player.saver.save(player.sess, 'model_save', global_step=i)
+            player.saver.save(player.sess, 'model_save/model.ckpt', global_step=i)
