@@ -23,7 +23,7 @@ class smart_agent(object):
         saved_path = tf.train.latest_checkpoint(checkpoint_dir)
         if (saved_path):
             # tf.reset_default_graph()
-            self.summary_writer.restore(self.sess, saved_path)
+            self.saver.restore(self.sess, saved_path)
             ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
             step = int(os.path.basename(ckpt.model_checkpoint_path).split('-')[1])
             self.start_step = int(step)
