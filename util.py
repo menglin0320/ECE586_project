@@ -10,10 +10,14 @@ def get_all_actions():
     return ret_list
 
 def epsilan_greedy(valid_actions, best_action, k, epsilon):
-    epsilon = max(0, epsilon - k/1000000)
+    epsilon = max(0, epsilon - k/10000000)
     do_rand_walk = np.random.choice([False,True],1, p = [1-epsilon, epsilon])
     if do_rand_walk:
-        action = valid_actions[random.randint(0, len(valid_actions)-1)]
+        rand_ind = random.randint(0, len(valid_actions) - 1)
+        # try_small_actions = random.randint(0, 1)
+        # if try_small_actions:
+        #     rand_ind = rand_ind % 18
+        action = valid_actions[rand_ind]
         return action
     else:
         if best_action == 60:
@@ -21,54 +25,52 @@ def epsilan_greedy(valid_actions, best_action, k, epsilon):
         return [best_action// 6 + 1, best_action % 6 + 1]
 
 def action2onehot(action):
-    max_dices = 10
     max_faces = 6
-    action_size = max_dices * max_faces + 1
+    action_size = max_faces + 1
     one_hot = np.zeros(action_size)
 
     if action[0] == 0:
         one_hot[- 1] = 1
         return one_hot
-    ind = (action[0]-1) * max_faces + (action[1]-1)
-    one_hot[ind-1] = 1
+
+    one_hot[action[1]-1] = action[0]
+
     return one_hot
 
 def value_action2onehot(action):
-    max_dices = 10
     max_faces = 6
-    action_size = max_dices * max_faces + 3
+    action_size = max_faces + 3
     one_hot = np.zeros(action_size)
 
-    if action == 'liar':
+    if action[0] == 'liar':
         one_hot[-3] = 1
+        one_hot[action[1][1] - 1] = action[1][0]
         return one_hot
 
-    if action == 'checked':
+    if action[0] == 'checked':
         one_hot[-2] = 1
+        one_hot[action[1][1] - 1] = action[1][0]
         return one_hot
 
     if action[0] == 0:
         one_hot[- 1] = 1
         return one_hot
 
-    ind = (action[0]-1) * max_faces + (action[1]-1)
-    one_hot[ind-1] = 1
+    one_hot[action[1]-1] = action[0]
     return one_hot
 
-def dice2onehot(dice):
-    max_dices = 5
+def dice2onehot(dices):
     max_faces = 6
-    state_size = max_dices * max_faces
-    dice_array = np.array(dice)
-    ind =  np.sum(dice_array) - 1
+    state_size = max_faces
     one_hot = np.zeros(state_size)
-    one_hot[ind] = 1
+    for dice in dices:
+        one_hot[dice-1] += 1
     return one_hot
 
 def to_histogram(game_dices):
     hist = np.zeros((11))
     for i in range(0, len(game_dices)):
-        for dice in range(0, len(game_dices)):
+        for dice in range(0, len(game_dices[i])):
             hist[game_dices[i][dice]] += 1
     return hist
 
@@ -109,7 +111,13 @@ def get_value_states(previous_bids, players_dice):
     cur_player = 1
     for i in range(len(previous_bids)):
         cur_player = 1 - cur_player
-        game_batch.append(get_value_state(previous_bids[i], players_dice[cur_player])[0])
+        if previous_bids[i] == 'liar':
+            action = ['liar', previous_bids[i-2]]
+        elif previous_bids[i] == 'checked':
+            action = ['checked', previous_bids[i-1]]
+        else:
+            action = previous_bids[i]
+        game_batch.append(get_value_state(action, players_dice[cur_player])[0])
     return np.asarray(game_batch)
 
 def int2action(probs):

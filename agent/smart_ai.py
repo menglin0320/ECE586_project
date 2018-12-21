@@ -104,7 +104,7 @@ class smart_agent(object):
         _, action, _ = self.act(bid, player_observations[opponent])
 
         if action == 'liar':
-            value_state_bid = 'checked'
+            value_state_bid = ['checked', bid]
         else:
             value_state_bid = action
         value_state = get_value_state(value_state_bid, player_observations[cur_player])
@@ -124,9 +124,10 @@ class smart_agent(object):
             valid_actions = np.asarray(valid_actions)
             nextnode_values = []
             cur_player = 1 - cur_player
-            for action in valid_actions:
+            for i, action in enumerate(valid_actions):
                 if action == 'liar':
-                    value_state = get_value_state('liar', player_observations[cur_player])
+                    action = ['liar', node]
+                    value_state = get_value_state(action, player_observations[cur_player])
                     [V] = self.sess.run(self.Value, feed_dict={self.value_state_holder: value_state})
                     nextnode_values.append(V[0])
                 else:
@@ -147,6 +148,6 @@ class smart_agent(object):
         states = np.asarray(states)
         Value_target = np.asarray(Value_target)
         Value_target = np.expand_dims(Value_target, 0).transpose()
-        _, Value_loss, Values, entry_diffs = self.sess.run([self.Value_opt, self.Value_loss, self.Value, self.entry_diffs], feed_dict={self.value_state_holder: states,
-                                                                                    self.Value_target: Value_target})
-        return Value_loss,Values, entry_diffs
+        _, Value_loss, Values = self.sess.run([self.Value_opt, self.Value_loss, self.Value], feed_dict={self.value_state_holder: states,
+                                                                                self.Value_target: Value_target})
+        return Value_loss,Values
